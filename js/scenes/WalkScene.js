@@ -13,6 +13,7 @@ const CLOUD_PARALLAX = 0.3;
 const PLAYER_X = GAME_WIDTH / 3;
 const CLOUD_COUNT = 5;
 const PLAYER_SCALE = 1.4; // experimento: Mario más grande que el resto del mundo
+const FEDE_SPAWN_DISTANCE = 400; // px recorridos entre apariciones de Fede
 
 class WalkScene extends Phaser.Scene {
     constructor() {
@@ -25,6 +26,7 @@ class WalkScene extends Phaser.Scene {
         this.createFloor();
         this.createAnimations();
         this.createPlayer();
+        this.createFede();
         this.createInput();
     }
 
@@ -102,6 +104,30 @@ class WalkScene extends Phaser.Scene {
         this.physics.add.collider(this.player, this.floorBody);
     }
 
+    createFede() {
+        // Fede: NPC decorativo, sin física ni animación, parado como el jugador.
+        this.fede = this.add.image(0, GROUND_Y, 'fede', 0)
+            .setOrigin(0.5, 1)
+            .setScale(PLAYER_SCALE)
+            .setDepth(3)
+            .setVisible(false);
+
+        this.fedeDistanceAccum = 0;
+    }
+
+    spawnFede(direction) {
+        const halfWidth = this.fede.displayWidth / 2;
+
+        if (direction > 0) {
+            // El mundo se mueve a la derecha del jugador -> Fede entra por la derecha
+            this.fede.x = GAME_WIDTH + halfWidth;
+        } else {
+            this.fede.x = -halfWidth;
+        }
+
+        this.fede.setVisible(true);
+    }
+
     createInput() {
         this.cursors = this.input.keyboard.createCursorKeys();
         this.keys = this.input.keyboard.addKeys('W,A,D,SPACE');
@@ -126,6 +152,26 @@ class WalkScene extends Phaser.Scene {
             } else if (cloud.x > GAME_WIDTH + halfWidth) {
                 this.recycleCloud(cloud, -1);
             }
+        }
+
+        if (direction !== 0) {
+            this.fedeDistanceAccum += Math.abs(direction) * WALK_SPEED * dt;
+        }
+
+        if (this.fede.visible) {
+            // Sin parallax: Fede es parte del escenario, se mueve igual que el piso.
+            this.fede.x -= direction * WALK_SPEED * dt;
+
+            const fedeHalfWidth = this.fede.displayWidth / 2;
+
+            if (this.fede.x < -fedeHalfWidth || this.fede.x > GAME_WIDTH + fedeHalfWidth) {
+                this.fede.setVisible(false);
+            }
+        }
+
+        if (!this.fede.visible && this.fedeDistanceAccum >= FEDE_SPAWN_DISTANCE) {
+            this.spawnFede(direction);
+            this.fedeDistanceAccum = 0;
         }
 
         const onGround = this.player.body.blocked.down;

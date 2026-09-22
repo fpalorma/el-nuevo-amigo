@@ -19,6 +19,13 @@ class BootScene extends Phaser.Scene {
         // Nubes dinámicas del cielo
         this.load.image('cloud1', 'assets/scenery/overworld/cloud1.png');
         this.load.image('cloud2', 'assets/scenery/overworld/cloud2.png');
+
+        // Fede, primer amigo del grupo: placeholder hasta tener su sprite real
+        // (inspirado en assets/friends/fede/fede-1.jpg). 32x24 -> 2 frames, se usa el 0 fijo.
+        this.load.spritesheet('fede', 'assets/hud/npc.png', {
+            frameWidth: 32,
+            frameHeight: 24
+        });
     }
 
     create() {
