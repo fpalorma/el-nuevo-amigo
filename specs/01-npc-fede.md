@@ -1,6 +1,6 @@
 # 01 — NPC Fede en WalkScene
 
-**Estado:** Draft
+**Estado:** Implementado
 **Dependencias:** Ninguna (primer spec del proyecto)
 **Fecha:** 2026-09-22
 

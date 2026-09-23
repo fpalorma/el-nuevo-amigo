@@ -13,6 +13,21 @@ const CLOUD_PARALLAX = 0.3;
 const PLAYER_X = GAME_WIDTH / 3;
 const CLOUD_COUNT = 5;
 const PLAYER_SCALE = 1.4; // experimento: Mario más grande que el resto del mundo
+const FEDE_SPAWN_DISTANCE = 400; // px recorridos entre apariciones de Fede
+// El sprite de Fede viene de un recorte a mayor resolución que mario-grown (87px vs 32px
+// de alto), así que se reescala aparte para que quede del mismo tamaño visual que Mario.
+const FEDE_SCALE = PLAYER_SCALE * 32 / 87;
+const FEDE_ANIM_INTERVAL = 300; // ms entre frames de la animación de caminata de Fede
+
+const PAZ_SPAWN_DISTANCE = 400; // px recorridos entre apariciones de Paz
+// Desfase fijo respecto del ciclo de Fede: como ambos acumulan distancia al mismo
+// ritmo y con el mismo período, arrancar el contador de Paz "adelantado" mantiene
+// ese mismo desfase para siempre, así nunca aparecen juntos ni pegados.
+const PAZ_SPAWN_OFFSET = 200;
+// Igual que con Fede: el recorte de Paz (pose parada) tiene 78px de alto,
+// muy distinto de los 32px del frame de Mario, así que se reescala aparte.
+const PAZ_SCALE = PLAYER_SCALE * 32 / 78;
+const PAZ_ANIM_INTERVAL = 300; // ms entre frames de la animación de caminata de Paz
 
 class WalkScene extends Phaser.Scene {
     constructor() {
@@ -25,6 +40,8 @@ class WalkScene extends Phaser.Scene {
         this.createFloor();
         this.createAnimations();
         this.createPlayer();
+        this.createFede();
+        this.createPaz();
         this.createInput();
     }
 
@@ -102,6 +119,72 @@ class WalkScene extends Phaser.Scene {
         this.physics.add.collider(this.player, this.floorBody);
     }
 
+    createFede() {
+        // Fede: NPC decorativo, sin física, con animación mínima de caminata (2 frames).
+        // El sprite original mira a la derecha; se invierte para que quede de frente
+        // a Mario (que camina hacia la izquierda dentro de la escena) y no de espaldas.
+        this.fede = this.add.image(0, GROUND_Y, 'fede-idle')
+            .setOrigin(0.5, 1)
+            .setScale(FEDE_SCALE)
+            .setFlipX(true)
+            .setDepth(3)
+            .setVisible(false);
+
+        this.fedeDistanceAccum = 0;
+        this.fedeAnimAccum = 0;
+        this.fedeAnimFrame = 0;
+    }
+
+    spawnFede(direction) {
+        this.fede.setTexture('fede-idle');
+        this.fedeAnimAccum = 0;
+        this.fedeAnimFrame = 0;
+
+        const halfWidth = this.fede.displayWidth / 2;
+
+        if (direction > 0) {
+            // El mundo se mueve a la derecha del jugador -> Fede entra por la derecha
+            this.fede.x = GAME_WIDTH + halfWidth;
+        } else {
+            this.fede.x = -halfWidth;
+        }
+
+        this.fede.setVisible(true);
+    }
+
+    createPaz() {
+        // Paz: mismo patrón que Fede, NPC decorativo sin física y con animación
+        // mínima de caminata (2 frames). El sprite original mira a la derecha;
+        // se invierte para que quede de frente a Mario y no de espaldas.
+        this.paz = this.add.image(0, GROUND_Y, 'paz-idle')
+            .setOrigin(0.5, 1)
+            .setScale(PAZ_SCALE)
+            .setFlipX(false)
+            .setDepth(3)
+            .setVisible(false);
+
+        this.pazDistanceAccum = -PAZ_SPAWN_OFFSET;
+        this.pazAnimAccum = 0;
+        this.pazAnimFrame = 0;
+    }
+
+    spawnPaz(direction) {
+        this.paz.setTexture('paz-idle');
+        this.pazAnimAccum = 0;
+        this.pazAnimFrame = 0;
+
+        const halfWidth = this.paz.displayWidth / 2;
+
+        if (direction > 0) {
+            // El mundo se mueve a la derecha del jugador -> Paz entra por la derecha
+            this.paz.x = GAME_WIDTH + halfWidth;
+        } else {
+            this.paz.x = -halfWidth;
+        }
+
+        this.paz.setVisible(true);
+    }
+
     createInput() {
         this.cursors = this.input.keyboard.createCursorKeys();
         this.keys = this.input.keyboard.addKeys('W,A,D,SPACE');
@@ -126,6 +209,66 @@ class WalkScene extends Phaser.Scene {
             } else if (cloud.x > GAME_WIDTH + halfWidth) {
                 this.recycleCloud(cloud, -1);
             }
+        }
+
+        if (direction !== 0) {
+            this.fedeDistanceAccum += Math.abs(direction) * WALK_SPEED * dt;
+        }
+
+        if (this.fede.visible) {
+            // Sin parallax: Fede es parte del escenario, se mueve igual que el piso.
+            this.fede.x -= direction * WALK_SPEED * dt;
+
+            // Animación mínima constante: alterna parado / con la mochila al hombro
+            // todo el tiempo que esté en pantalla, sin depender de que Mario avance.
+            this.fedeAnimAccum += delta;
+
+            if (this.fedeAnimAccum >= FEDE_ANIM_INTERVAL) {
+                this.fedeAnimAccum = 0;
+                this.fedeAnimFrame = 1 - this.fedeAnimFrame;
+                this.fede.setTexture(this.fedeAnimFrame === 0 ? 'fede-idle' : 'fede-walk');
+            }
+
+            const fedeHalfWidth = this.fede.displayWidth / 2;
+
+            if (this.fede.x < -fedeHalfWidth || this.fede.x > GAME_WIDTH + fedeHalfWidth) {
+                this.fede.setVisible(false);
+            }
+        }
+
+        if (!this.fede.visible && this.fedeDistanceAccum >= FEDE_SPAWN_DISTANCE) {
+            this.spawnFede(direction);
+            this.fedeDistanceAccum = 0;
+        }
+
+        if (direction !== 0) {
+            this.pazDistanceAccum += Math.abs(direction) * WALK_SPEED * dt;
+        }
+
+        if (this.paz.visible) {
+            // Sin parallax: Paz es parte del escenario, se mueve igual que el piso.
+            this.paz.x -= direction * WALK_SPEED * dt;
+
+            // Animación mínima constante: alterna parado / caminando todo el tiempo
+            // que esté en pantalla, sin depender de que Mario avance.
+            this.pazAnimAccum += delta;
+
+            if (this.pazAnimAccum >= PAZ_ANIM_INTERVAL) {
+                this.pazAnimAccum = 0;
+                this.pazAnimFrame = 1 - this.pazAnimFrame;
+                this.paz.setTexture(this.pazAnimFrame === 0 ? 'paz-idle' : 'paz-walk');
+            }
+
+            const pazHalfWidth = this.paz.displayWidth / 2;
+
+            if (this.paz.x < -pazHalfWidth || this.paz.x > GAME_WIDTH + pazHalfWidth) {
+                this.paz.setVisible(false);
+            }
+        }
+
+        if (!this.paz.visible && this.pazDistanceAccum >= PAZ_SPAWN_DISTANCE) {
+            this.spawnPaz(direction);
+            this.pazDistanceAccum = 0;
         }
 
         const onGround = this.player.body.blocked.down;
