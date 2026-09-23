@@ -14,6 +14,10 @@ const PLAYER_X = GAME_WIDTH / 3;
 const CLOUD_COUNT = 5;
 const PLAYER_SCALE = 1.4; // experimento: Mario más grande que el resto del mundo
 const FEDE_SPAWN_DISTANCE = 400; // px recorridos entre apariciones de Fede
+// El sprite de Fede viene de un recorte a mayor resolución que mario-grown (87px vs 32px
+// de alto), así que se reescala aparte para que quede del mismo tamaño visual que Mario.
+const FEDE_SCALE = PLAYER_SCALE * 32 / 87;
+const FEDE_ANIM_INTERVAL = 300; // ms entre frames de la animación de caminata de Fede
 
 class WalkScene extends Phaser.Scene {
     constructor() {
@@ -105,17 +109,26 @@ class WalkScene extends Phaser.Scene {
     }
 
     createFede() {
-        // Fede: NPC decorativo, sin física ni animación, parado como el jugador.
-        this.fede = this.add.image(0, GROUND_Y, 'fede', 0)
+        // Fede: NPC decorativo, sin física, con animación mínima de caminata (2 frames).
+        // El sprite original mira a la derecha; se invierte para que quede de frente
+        // a Mario (que camina hacia la izquierda dentro de la escena) y no de espaldas.
+        this.fede = this.add.image(0, GROUND_Y, 'fede-idle')
             .setOrigin(0.5, 1)
-            .setScale(PLAYER_SCALE)
+            .setScale(FEDE_SCALE)
+            .setFlipX(true)
             .setDepth(3)
             .setVisible(false);
 
         this.fedeDistanceAccum = 0;
+        this.fedeAnimAccum = 0;
+        this.fedeAnimFrame = 0;
     }
 
     spawnFede(direction) {
+        this.fede.setTexture('fede-idle');
+        this.fedeAnimAccum = 0;
+        this.fedeAnimFrame = 0;
+
         const halfWidth = this.fede.displayWidth / 2;
 
         if (direction > 0) {
@@ -161,6 +174,16 @@ class WalkScene extends Phaser.Scene {
         if (this.fede.visible) {
             // Sin parallax: Fede es parte del escenario, se mueve igual que el piso.
             this.fede.x -= direction * WALK_SPEED * dt;
+
+            // Animación mínima constante: alterna parado / con la mochila al hombro
+            // todo el tiempo que esté en pantalla, sin depender de que Mario avance.
+            this.fedeAnimAccum += delta;
+
+            if (this.fedeAnimAccum >= FEDE_ANIM_INTERVAL) {
+                this.fedeAnimAccum = 0;
+                this.fedeAnimFrame = 1 - this.fedeAnimFrame;
+                this.fede.setTexture(this.fedeAnimFrame === 0 ? 'fede-idle' : 'fede-walk');
+            }
 
             const fedeHalfWidth = this.fede.displayWidth / 2;
 
