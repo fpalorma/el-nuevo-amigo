@@ -29,6 +29,14 @@ class BootScene extends Phaser.Scene {
         // (fondo original removido a mano) para una animación mínima de caminata.
         this.load.image('paz-idle', 'assets/friends/paz/paz-standing.png');
         this.load.image('paz-walk', 'assets/friends/paz/paz-walk.png');
+
+        // Osva: 2 poses recortadas de assets/friends/osva/sprites-osva.png
+        this.load.image('osva-idle', 'assets/friends/osva/osva-standing.png');
+        this.load.image('osva-walk', 'assets/friends/osva/osva-walk.png');
+
+        // Agu: 2 poses recortadas de assets/friends/agu/sprites-agu.png
+        this.load.image('agu-idle', 'assets/friends/agu/agu-standing.png');
+        this.load.image('agu-walk', 'assets/friends/agu/agu-walk.png');
     }
 
     create() {

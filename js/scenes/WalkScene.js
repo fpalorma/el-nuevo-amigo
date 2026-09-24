@@ -29,6 +29,19 @@ const PAZ_SPAWN_OFFSET = 200;
 const PAZ_SCALE = PLAYER_SCALE * 32 / 78;
 const PAZ_ANIM_INTERVAL = 300; // ms entre frames de la animación de caminata de Paz
 
+const OSVA_SPAWN_DISTANCE = 400; // px recorridos entre apariciones de Osva
+// Desfase fijo distinto al de Paz (200) para que no coincida con Fede ni con Paz.
+const OSVA_SPAWN_OFFSET = 100;
+// El recorte de Osva (pose parada) tiene 92px de alto: se reescala aparte para igualar a Mario.
+const OSVA_SCALE = PLAYER_SCALE * 32 / 92;
+const OSVA_ANIM_INTERVAL = 300; // ms entre frames de la animación de caminata de Osva
+const AGU_SPAWN_DISTANCE = 400; // px recorridos entre apariciones de Agu
+// Desfase fijo distinto al de Paz (200) y Osva (100) para que no coincida con ninguno.
+const AGU_SPAWN_OFFSET = 300;
+// El recorte de Agu (pose parada) tiene 102px de alto: se reescala aparte para igualar a Mario.
+const AGU_SCALE = PLAYER_SCALE * 32 / 102;
+const AGU_ANIM_INTERVAL = 300; // ms entre frames de la animación de caminata de Agu
+
 class WalkScene extends Phaser.Scene {
     constructor() {
         super('walk');
@@ -42,6 +55,8 @@ class WalkScene extends Phaser.Scene {
         this.createPlayer();
         this.createFede();
         this.createPaz();
+        this.createOsva();
+        this.createAgu();
         this.createInput();
     }
 
@@ -185,6 +200,56 @@ class WalkScene extends Phaser.Scene {
         this.paz.setVisible(true);
     }
 
+    createOsva() {
+        // Osva: mismo patrón que Fede/Paz. El sprite original mira a la derecha;
+        // se invierte como Fede (verificar a ojo en pantalla).
+        this.osva = this.add.image(0, GROUND_Y, 'osva-idle')
+            .setOrigin(0.5, 1)
+            .setScale(OSVA_SCALE)
+            .setFlipX(true)
+            .setDepth(3)
+            .setVisible(false);
+
+        this.osvaDistanceAccum = -OSVA_SPAWN_OFFSET;
+        this.osvaAnimAccum = 0;
+        this.osvaAnimFrame = 0;
+    }
+
+    spawnOsva(direction) {
+        this.osva.setTexture('osva-idle');
+        this.osvaAnimAccum = 0;
+        this.osvaAnimFrame = 0;
+
+        const halfWidth = this.osva.displayWidth / 2;
+        this.osva.x = direction > 0 ? GAME_WIDTH + halfWidth : -halfWidth;
+        this.osva.setVisible(true);
+    }
+
+    createAgu() {
+        // Agu: mismo patrón que Fede/Paz/Osva. El sprite original mira a la derecha;
+        // se invierte como Fede (verificar a ojo en pantalla).
+        this.agu = this.add.image(0, GROUND_Y, 'agu-idle')
+            .setOrigin(0.5, 1)
+            .setScale(AGU_SCALE)
+            .setFlipX(true)
+            .setDepth(3)
+            .setVisible(false);
+
+        this.aguDistanceAccum = -AGU_SPAWN_OFFSET;
+        this.aguAnimAccum = 0;
+        this.aguAnimFrame = 0;
+    }
+
+    spawnAgu(direction) {
+        this.agu.setTexture('agu-idle');
+        this.aguAnimAccum = 0;
+        this.aguAnimFrame = 0;
+
+        const halfWidth = this.agu.displayWidth / 2;
+        this.agu.x = direction > 0 ? GAME_WIDTH + halfWidth : -halfWidth;
+        this.agu.setVisible(true);
+    }
+
     createInput() {
         this.cursors = this.input.keyboard.createCursorKeys();
         this.keys = this.input.keyboard.addKeys('W,A,D,SPACE');
@@ -269,6 +334,60 @@ class WalkScene extends Phaser.Scene {
         if (!this.paz.visible && this.pazDistanceAccum >= PAZ_SPAWN_DISTANCE) {
             this.spawnPaz(direction);
             this.pazDistanceAccum = 0;
+        }
+
+        if (direction !== 0) {
+            this.osvaDistanceAccum += Math.abs(direction) * WALK_SPEED * dt;
+        }
+
+        if (this.osva.visible) {
+            this.osva.x -= direction * WALK_SPEED * dt;
+
+            this.osvaAnimAccum += delta;
+
+            if (this.osvaAnimAccum >= OSVA_ANIM_INTERVAL) {
+                this.osvaAnimAccum = 0;
+                this.osvaAnimFrame = 1 - this.osvaAnimFrame;
+                this.osva.setTexture(this.osvaAnimFrame === 0 ? 'osva-idle' : 'osva-walk');
+            }
+
+            const osvaHalfWidth = this.osva.displayWidth / 2;
+
+            if (this.osva.x < -osvaHalfWidth || this.osva.x > GAME_WIDTH + osvaHalfWidth) {
+                this.osva.setVisible(false);
+            }
+        }
+
+        if (!this.osva.visible && this.osvaDistanceAccum >= OSVA_SPAWN_DISTANCE) {
+            this.spawnOsva(direction);
+            this.osvaDistanceAccum = 0;
+        }
+
+        if (direction !== 0) {
+            this.aguDistanceAccum += Math.abs(direction) * WALK_SPEED * dt;
+        }
+
+        if (this.agu.visible) {
+            this.agu.x -= direction * WALK_SPEED * dt;
+
+            this.aguAnimAccum += delta;
+
+            if (this.aguAnimAccum >= AGU_ANIM_INTERVAL) {
+                this.aguAnimAccum = 0;
+                this.aguAnimFrame = 1 - this.aguAnimFrame;
+                this.agu.setTexture(this.aguAnimFrame === 0 ? 'agu-idle' : 'agu-walk');
+            }
+
+            const aguHalfWidth = this.agu.displayWidth / 2;
+
+            if (this.agu.x < -aguHalfWidth || this.agu.x > GAME_WIDTH + aguHalfWidth) {
+                this.agu.setVisible(false);
+            }
+        }
+
+        if (!this.agu.visible && this.aguDistanceAccum >= AGU_SPAWN_DISTANCE) {
+            this.spawnAgu(direction);
+            this.aguDistanceAccum = 0;
         }
 
         const onGround = this.player.body.blocked.down;
