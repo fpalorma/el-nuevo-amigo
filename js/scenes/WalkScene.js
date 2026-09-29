@@ -42,6 +42,13 @@ const AGU_SPAWN_OFFSET = 300;
 const AGU_SCALE = PLAYER_SCALE * 32 / 102;
 const AGU_ANIM_INTERVAL = 300; // ms entre frames de la animación de caminata de Agu
 
+const EMI_SPAWN_DISTANCE = 400; // px recorridos entre apariciones de Emi
+// Desfase fijo distinto al de Paz (200), Osva (100) y Agu (300) para que no coincida con ninguno.
+const EMI_SPAWN_OFFSET = 350;
+// El recorte de Emi (ambas poses) tiene 78px de alto: se reescala aparte para igualar a Mario.
+const EMI_SCALE = PLAYER_SCALE * 32 / 78;
+const EMI_ANIM_INTERVAL = 300; // ms entre frames de la animación de caminata de Emi
+
 class WalkScene extends Phaser.Scene {
     constructor() {
         super('walk');
@@ -57,6 +64,7 @@ class WalkScene extends Phaser.Scene {
         this.createPaz();
         this.createOsva();
         this.createAgu();
+        this.createEmi();
         this.createInput();
     }
 
@@ -250,6 +258,31 @@ class WalkScene extends Phaser.Scene {
         this.agu.setVisible(true);
     }
 
+    createEmi() {
+        // Emi: mismo patrón que Fede/Paz/Osva/Agu. Aunque en el recorte aislado parecía
+        // mirar a la izquierda, en pantalla queda de espaldas a Mario, así que se invierte.
+        this.emi = this.add.image(0, GROUND_Y, 'emi-idle')
+            .setOrigin(0.5, 1)
+            .setScale(EMI_SCALE)
+            .setFlipX(true)
+            .setDepth(3)
+            .setVisible(false);
+
+        this.emiDistanceAccum = -EMI_SPAWN_OFFSET;
+        this.emiAnimAccum = 0;
+        this.emiAnimFrame = 0;
+    }
+
+    spawnEmi(direction) {
+        this.emi.setTexture('emi-idle');
+        this.emiAnimAccum = 0;
+        this.emiAnimFrame = 0;
+
+        const halfWidth = this.emi.displayWidth / 2;
+        this.emi.x = direction > 0 ? GAME_WIDTH + halfWidth : -halfWidth;
+        this.emi.setVisible(true);
+    }
+
     createInput() {
         this.cursors = this.input.keyboard.createCursorKeys();
         this.keys = this.input.keyboard.addKeys('W,A,D,SPACE');
@@ -388,6 +421,33 @@ class WalkScene extends Phaser.Scene {
         if (!this.agu.visible && this.aguDistanceAccum >= AGU_SPAWN_DISTANCE) {
             this.spawnAgu(direction);
             this.aguDistanceAccum = 0;
+        }
+
+        if (direction !== 0) {
+            this.emiDistanceAccum += Math.abs(direction) * WALK_SPEED * dt;
+        }
+
+        if (this.emi.visible) {
+            this.emi.x -= direction * WALK_SPEED * dt;
+
+            this.emiAnimAccum += delta;
+
+            if (this.emiAnimAccum >= EMI_ANIM_INTERVAL) {
+                this.emiAnimAccum = 0;
+                this.emiAnimFrame = 1 - this.emiAnimFrame;
+                this.emi.setTexture(this.emiAnimFrame === 0 ? 'emi-idle' : 'emi-walk');
+            }
+
+            const emiHalfWidth = this.emi.displayWidth / 2;
+
+            if (this.emi.x < -emiHalfWidth || this.emi.x > GAME_WIDTH + emiHalfWidth) {
+                this.emi.setVisible(false);
+            }
+        }
+
+        if (!this.emi.visible && this.emiDistanceAccum >= EMI_SPAWN_DISTANCE) {
+            this.spawnEmi(direction);
+            this.emiDistanceAccum = 0;
         }
 
         const onGround = this.player.body.blocked.down;

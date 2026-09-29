@@ -37,6 +37,10 @@ class BootScene extends Phaser.Scene {
         // Agu: 2 poses recortadas de assets/friends/agu/sprites-agu.png
         this.load.image('agu-idle', 'assets/friends/agu/agu-standing.png');
         this.load.image('agu-walk', 'assets/friends/agu/agu-walk.png');
+
+        // Emi: 2 poses recortadas de assets/friends/emi/sprites-emi.png
+        this.load.image('emi-idle', 'assets/friends/emi/emi-standing.png');
+        this.load.image('emi-walk', 'assets/friends/emi/emi-walk.png');
     }
 
     create() {
