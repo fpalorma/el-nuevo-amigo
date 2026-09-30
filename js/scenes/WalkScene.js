@@ -24,9 +24,9 @@ const PAZ_SPAWN_DISTANCE = 400; // px recorridos entre apariciones de Paz
 // ritmo y con el mismo período, arrancar el contador de Paz "adelantado" mantiene
 // ese mismo desfase para siempre, así nunca aparecen juntos ni pegados.
 const PAZ_SPAWN_OFFSET = 200;
-// Igual que con Fede: el recorte de Paz (pose parada) tiene 78px de alto,
+// Igual que con Fede: el recorte de Paz (pose parada) tiene 199px de alto,
 // muy distinto de los 32px del frame de Mario, así que se reescala aparte.
-const PAZ_SCALE = PLAYER_SCALE * 32 / 78;
+const PAZ_SCALE = PLAYER_SCALE * 32 / 199;
 const PAZ_ANIM_INTERVAL = 300; // ms entre frames de la animación de caminata de Paz
 
 const OSVA_SPAWN_DISTANCE = 400; // px recorridos entre apariciones de Osva
@@ -182,7 +182,7 @@ class WalkScene extends Phaser.Scene {
         this.paz = this.add.image(0, GROUND_Y, 'paz-idle')
             .setOrigin(0.5, 1)
             .setScale(PAZ_SCALE)
-            .setFlipX(false)
+            .setFlipX(true)
             .setDepth(3)
             .setVisible(false);
 
